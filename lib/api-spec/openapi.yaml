@@ -1,22 +1,44 @@
 openapi: 3.1.0
 info:
-  # Do not change the title, if the title changes, the import paths will be broken
   title: Api
   version: 0.1.0
-  description: API specification
+  description: Food Delivery Management System API
 servers:
   - url: /api
     description: Base API path
 tags:
   - name: health
     description: Health operations
+  - name: auth
+    description: Authentication
+  - name: restaurants
+    description: Restaurant management
+  - name: menu
+    description: Menu items
+  - name: categories
+    description: Food categories
+  - name: cart
+    description: Shopping cart
+  - name: orders
+    description: Order management
+  - name: payments
+    description: Payment processing
+  - name: reviews
+    description: Ratings and reviews
+  - name: notifications
+    description: Notification system
+  - name: analytics
+    description: Sales analytics
+  - name: delivery
+    description: Delivery partner operations
+  - name: admin
+    description: Admin operations
 paths:
   /healthz:
     get:
       operationId: healthCheck
       tags: [health]
       summary: Health check
-      description: Returns server health status
       responses:
         "200":
           description: Healthy
@@ -24,6 +46,787 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/HealthStatus"
+
+  # AUTH
+  /auth/register:
+    post:
+      operationId: register
+      tags: [auth]
+      summary: Register a new user
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RegisterInput"
+      responses:
+        "201":
+          description: Registered
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuthResponse"
+        "400":
+          description: Bad request
+
+  /auth/login:
+    post:
+      operationId: login
+      tags: [auth]
+      summary: Login
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LoginInput"
+      responses:
+        "200":
+          description: Logged in
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuthResponse"
+        "401":
+          description: Unauthorized
+
+  /auth/logout:
+    post:
+      operationId: logout
+      tags: [auth]
+      summary: Logout
+      responses:
+        "200":
+          description: Logged out
+
+  /auth/me:
+    get:
+      operationId: getMe
+      tags: [auth]
+      summary: Get current user
+      responses:
+        "200":
+          description: Current user
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/User"
+
+  /auth/me/profile:
+    patch:
+      operationId: updateProfile
+      tags: [auth]
+      summary: Update user profile
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ProfileUpdate"
+      responses:
+        "200":
+          description: Updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/User"
+
+  # CATEGORIES
+  /categories:
+    get:
+      operationId: listCategories
+      tags: [categories]
+      summary: List all food categories
+      responses:
+        "200":
+          description: Category list
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Category"
+    post:
+      operationId: createCategory
+      tags: [categories]
+      summary: Create a category (admin)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CategoryInput"
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Category"
+
+  # RESTAURANTS
+  /restaurants:
+    get:
+      operationId: listRestaurants
+      tags: [restaurants]
+      summary: List restaurants
+      parameters:
+        - name: search
+          in: query
+          schema:
+            type: string
+        - name: categoryId
+          in: query
+          schema:
+            type: integer
+        - name: page
+          in: query
+          schema:
+            type: integer
+        - name: limit
+          in: query
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Restaurant list
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RestaurantPage"
+    post:
+      operationId: createRestaurant
+      tags: [restaurants]
+      summary: Create a restaurant
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RestaurantInput"
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Restaurant"
+
+  /restaurants/{id}:
+    get:
+      operationId: getRestaurant
+      tags: [restaurants]
+      summary: Get restaurant details
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Restaurant
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RestaurantDetail"
+    patch:
+      operationId: updateRestaurant
+      tags: [restaurants]
+      summary: Update a restaurant
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RestaurantUpdate"
+      responses:
+        "200":
+          description: Updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Restaurant"
+    delete:
+      operationId: deleteRestaurant
+      tags: [restaurants]
+      summary: Delete a restaurant
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "204":
+          description: Deleted
+
+  /restaurants/my:
+    get:
+      operationId: getMyRestaurant
+      tags: [restaurants]
+      summary: Get the authenticated owner's restaurant
+      responses:
+        "200":
+          description: Restaurant
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RestaurantDetail"
+
+  # MENU
+  /menu:
+    get:
+      operationId: listMenuItems
+      tags: [menu]
+      summary: List menu items for a restaurant
+      parameters:
+        - name: restaurantId
+          in: query
+          required: true
+          schema:
+            type: integer
+        - name: categoryId
+          in: query
+          schema:
+            type: integer
+        - name: search
+          in: query
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Menu items
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/MenuItem"
+    post:
+      operationId: createMenuItem
+      tags: [menu]
+      summary: Create a menu item
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/MenuItemInput"
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MenuItem"
+
+  /menu/{id}:
+    patch:
+      operationId: updateMenuItem
+      tags: [menu]
+      summary: Update a menu item
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/MenuItemUpdate"
+      responses:
+        "200":
+          description: Updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MenuItem"
+    delete:
+      operationId: deleteMenuItem
+      tags: [menu]
+      summary: Delete a menu item
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "204":
+          description: Deleted
+
+  # CART
+  /cart:
+    get:
+      operationId: getCart
+      tags: [cart]
+      summary: Get current user's cart
+      responses:
+        "200":
+          description: Cart
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Cart"
+
+  /cart/add:
+    post:
+      operationId: addToCart
+      tags: [cart]
+      summary: Add item to cart
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CartItemInput"
+      responses:
+        "200":
+          description: Cart updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Cart"
+
+  /cart/remove/{itemId}:
+    delete:
+      operationId: removeFromCart
+      tags: [cart]
+      summary: Remove item from cart
+      parameters:
+        - name: itemId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Cart updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Cart"
+
+  /cart/clear:
+    delete:
+      operationId: clearCart
+      tags: [cart]
+      summary: Clear the cart
+      responses:
+        "200":
+          description: Cleared
+
+  # ORDERS
+  /orders:
+    post:
+      operationId: createOrder
+      tags: [orders]
+      summary: Create an order from cart
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/OrderInput"
+      responses:
+        "201":
+          description: Order created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Order"
+    get:
+      operationId: listOrders
+      tags: [orders]
+      summary: List orders (for current user role)
+      parameters:
+        - name: status
+          in: query
+          schema:
+            type: string
+        - name: page
+          in: query
+          schema:
+            type: integer
+        - name: limit
+          in: query
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Orders
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OrderPage"
+
+  /orders/{id}:
+    get:
+      operationId: getOrder
+      tags: [orders]
+      summary: Get order details
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Order
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Order"
+
+  /orders/{id}/status:
+    patch:
+      operationId: updateOrderStatus
+      tags: [orders]
+      summary: Update order status
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/OrderStatusUpdate"
+      responses:
+        "200":
+          description: Updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Order"
+
+  # PAYMENTS
+  /payments/create-intent:
+    post:
+      operationId: createPaymentIntent
+      tags: [payments]
+      summary: Create a Stripe payment intent
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PaymentIntentInput"
+      responses:
+        "200":
+          description: Payment intent created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PaymentIntent"
+
+  /payments/confirm:
+    post:
+      operationId: confirmPayment
+      tags: [payments]
+      summary: Confirm payment and update order
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PaymentConfirmInput"
+      responses:
+        "200":
+          description: Payment confirmed
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Payment"
+
+  /payments/history:
+    get:
+      operationId: listPayments
+      tags: [payments]
+      summary: List payment history
+      responses:
+        "200":
+          description: Payments
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Payment"
+
+  # REVIEWS
+  /reviews:
+    post:
+      operationId: createReview
+      tags: [reviews]
+      summary: Submit a review
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ReviewInput"
+      responses:
+        "201":
+          description: Review submitted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Review"
+    get:
+      operationId: listReviews
+      tags: [reviews]
+      summary: List reviews for a restaurant
+      parameters:
+        - name: restaurantId
+          in: query
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Reviews
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Review"
+
+  # NOTIFICATIONS
+  /notifications:
+    get:
+      operationId: listNotifications
+      tags: [notifications]
+      summary: Get user notifications
+      responses:
+        "200":
+          description: Notifications
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Notification"
+
+  /notifications/read:
+    patch:
+      operationId: markNotificationRead
+      tags: [notifications]
+      summary: Mark a notification as read
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/NotificationReadInput"
+      responses:
+        "200":
+          description: Updated
+
+  /notifications/read-all:
+    patch:
+      operationId: markAllNotificationsRead
+      tags: [notifications]
+      summary: Mark all notifications as read
+      responses:
+        "200":
+          description: Updated
+
+  # ANALYTICS
+  /analytics/summary:
+    get:
+      operationId: getAnalyticsSummary
+      tags: [analytics]
+      summary: Get high-level analytics summary
+      responses:
+        "200":
+          description: Summary
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AnalyticsSummary"
+
+  /analytics/revenue:
+    get:
+      operationId: getRevenueAnalytics
+      tags: [analytics]
+      summary: Revenue analytics (daily/weekly/monthly)
+      parameters:
+        - name: period
+          in: query
+          schema:
+            type: string
+            enum: [daily, weekly, monthly]
+      responses:
+        "200":
+          description: Revenue data
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/RevenueDataPoint"
+
+  /analytics/top-foods:
+    get:
+      operationId: getTopFoods
+      tags: [analytics]
+      summary: Top selling food items
+      responses:
+        "200":
+          description: Top foods
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/TopFoodItem"
+
+  /analytics/top-restaurants:
+    get:
+      operationId: getTopRestaurants
+      tags: [analytics]
+      summary: Top performing restaurants
+      responses:
+        "200":
+          description: Top restaurants
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/TopRestaurant"
+
+  /analytics/orders-chart:
+    get:
+      operationId: getOrdersChart
+      tags: [analytics]
+      summary: Orders per day chart data
+      parameters:
+        - name: days
+          in: query
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Orders chart
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/OrderChartPoint"
+
+  # DELIVERY PARTNER
+  /delivery/orders:
+    get:
+      operationId: listDeliveryOrders
+      tags: [delivery]
+      summary: List orders assigned to delivery partner
+      responses:
+        "200":
+          description: Orders
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Order"
+
+  /delivery/earnings:
+    get:
+      operationId: getDeliveryEarnings
+      tags: [delivery]
+      summary: Get delivery partner earnings summary
+      responses:
+        "200":
+          description: Earnings
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DeliveryEarnings"
+
+  # ADMIN
+  /admin/users:
+    get:
+      operationId: adminListUsers
+      tags: [admin]
+      summary: Admin list all users
+      parameters:
+        - name: role
+          in: query
+          schema:
+            type: string
+        - name: page
+          in: query
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Users
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UserPage"
+
+  /admin/users/{id}:
+    patch:
+      operationId: adminUpdateUser
+      tags: [admin]
+      summary: Admin update user
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AdminUserUpdate"
+      responses:
+        "200":
+          description: Updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/User"
+
+  /admin/restaurants:
+    get:
+      operationId: adminListRestaurants
+      tags: [admin]
+      summary: Admin list all restaurants
+      parameters:
+        - name: page
+          in: query
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Restaurants
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RestaurantPage"
+
 components:
   schemas:
     HealthStatus:
@@ -34,3 +837,588 @@ components:
       required:
         - status
 
+    # AUTH
+    RegisterInput:
+      type: object
+      required: [name, email, password, role]
+      properties:
+        name:
+          type: string
+        email:
+          type: string
+        password:
+          type: string
+        phone:
+          type: ["string", "null"]
+        role:
+          type: string
+          enum: [customer, restaurant_owner, delivery_partner, admin]
+
+    LoginInput:
+      type: object
+      required: [email, password]
+      properties:
+        email:
+          type: string
+        password:
+          type: string
+
+    AuthResponse:
+      type: object
+      required: [token, user]
+      properties:
+        token:
+          type: string
+        user:
+          $ref: "#/components/schemas/User"
+
+    User:
+      type: object
+      required: [id, name, email, role, createdAt]
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        email:
+          type: string
+        phone:
+          type: ["string", "null"]
+        role:
+          type: string
+          enum: [customer, restaurant_owner, delivery_partner, admin]
+        createdAt:
+          type: string
+
+    ProfileUpdate:
+      type: object
+      properties:
+        name:
+          type: string
+        phone:
+          type: string
+
+    # CATEGORIES
+    Category:
+      type: object
+      required: [id, name]
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+
+    CategoryInput:
+      type: object
+      required: [name]
+      properties:
+        name:
+          type: string
+
+    # RESTAURANTS
+    Restaurant:
+      type: object
+      required: [id, ownerId, name, address, status]
+      properties:
+        id:
+          type: integer
+        ownerId:
+          type: integer
+        name:
+          type: string
+        address:
+          type: string
+        phone:
+          type: ["string", "null"]
+        image:
+          type: ["string", "null"]
+        status:
+          type: string
+          enum: [active, inactive, pending]
+        avgRating:
+          type: ["number", "null"]
+        totalReviews:
+          type: ["integer", "null"]
+
+    RestaurantDetail:
+      type: object
+      required: [id, ownerId, name, address, status, menuItems]
+      properties:
+        id:
+          type: integer
+        ownerId:
+          type: integer
+        name:
+          type: string
+        address:
+          type: string
+        phone:
+          type: ["string", "null"]
+        image:
+          type: ["string", "null"]
+        status:
+          type: string
+          enum: [active, inactive, pending]
+        avgRating:
+          type: ["number", "null"]
+        totalReviews:
+          type: ["integer", "null"]
+        menuItems:
+          type: array
+          items:
+            $ref: "#/components/schemas/MenuItem"
+
+    RestaurantPage:
+      type: object
+      required: [data, total, page, limit]
+      properties:
+        data:
+          type: array
+          items:
+            $ref: "#/components/schemas/Restaurant"
+        total:
+          type: integer
+        page:
+          type: integer
+        limit:
+          type: integer
+
+    RestaurantInput:
+      type: object
+      required: [name, address]
+      properties:
+        name:
+          type: string
+        address:
+          type: string
+        phone:
+          type: string
+        image:
+          type: string
+
+    RestaurantUpdate:
+      type: object
+      properties:
+        name:
+          type: string
+        address:
+          type: string
+        phone:
+          type: string
+        image:
+          type: string
+        status:
+          type: string
+          enum: [active, inactive, pending]
+
+    # MENU
+    MenuItem:
+      type: object
+      required: [id, restaurantId, name, price, available]
+      properties:
+        id:
+          type: integer
+        restaurantId:
+          type: integer
+        categoryId:
+          type: ["integer", "null"]
+        categoryName:
+          type: ["string", "null"]
+        name:
+          type: string
+        description:
+          type: ["string", "null"]
+        price:
+          type: number
+        image:
+          type: ["string", "null"]
+        available:
+          type: boolean
+
+    MenuItemInput:
+      type: object
+      required: [restaurantId, name, price]
+      properties:
+        restaurantId:
+          type: integer
+        categoryId:
+          type: ["integer", "null"]
+        name:
+          type: string
+        description:
+          type: ["string", "null"]
+        price:
+          type: number
+        image:
+          type: ["string", "null"]
+        available:
+          type: boolean
+
+    MenuItemUpdate:
+      type: object
+      properties:
+        categoryId:
+          type: ["integer", "null"]
+        name:
+          type: string
+        description:
+          type: ["string", "null"]
+        price:
+          type: number
+        image:
+          type: ["string", "null"]
+        available:
+          type: boolean
+
+    # CART
+    Cart:
+      type: object
+      required: [id, userId, items, total]
+      properties:
+        id:
+          type: integer
+        userId:
+          type: integer
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/CartItem"
+        total:
+          type: number
+        restaurantId:
+          type: ["integer", "null"]
+        restaurantName:
+          type: ["string", "null"]
+
+    CartItem:
+      type: object
+      required: [id, menuItemId, name, price, quantity, subtotal]
+      properties:
+        id:
+          type: integer
+        menuItemId:
+          type: integer
+        name:
+          type: string
+        price:
+          type: number
+        quantity:
+          type: integer
+        subtotal:
+          type: number
+        image:
+          type: ["string", "null"]
+
+    CartItemInput:
+      type: object
+      required: [menuItemId, quantity]
+      properties:
+        menuItemId:
+          type: integer
+        quantity:
+          type: integer
+
+    # ORDERS
+    Order:
+      type: object
+      required: [id, userId, restaurantId, totalAmount, status, createdAt, items]
+      properties:
+        id:
+          type: integer
+        userId:
+          type: integer
+        restaurantId:
+          type: integer
+        restaurantName:
+          type: string
+        totalAmount:
+          type: number
+        status:
+          type: string
+          enum: [pending, payment_completed, accepted, preparing, ready_for_pickup, out_for_delivery, delivered, cancelled]
+        deliveryPartnerId:
+          type: ["integer", "null"]
+        deliveryPartnerName:
+          type: ["string", "null"]
+        createdAt:
+          type: string
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/OrderItem"
+
+    OrderItem:
+      type: object
+      required: [id, menuItemId, name, quantity, price]
+      properties:
+        id:
+          type: integer
+        menuItemId:
+          type: integer
+        name:
+          type: string
+        quantity:
+          type: integer
+        price:
+          type: number
+        image:
+          type: ["string", "null"]
+
+    OrderPage:
+      type: object
+      required: [data, total, page, limit]
+      properties:
+        data:
+          type: array
+          items:
+            $ref: "#/components/schemas/Order"
+        total:
+          type: integer
+        page:
+          type: integer
+        limit:
+          type: integer
+
+    OrderInput:
+      type: object
+      required: [restaurantId]
+      properties:
+        restaurantId:
+          type: integer
+        deliveryAddress:
+          type: string
+
+    OrderStatusUpdate:
+      type: object
+      required: [status]
+      properties:
+        status:
+          type: string
+          enum: [pending, payment_completed, accepted, preparing, ready_for_pickup, out_for_delivery, delivered, cancelled]
+        deliveryPartnerId:
+          type: ["integer", "null"]
+
+    # PAYMENTS
+    PaymentIntentInput:
+      type: object
+      required: [orderId]
+      properties:
+        orderId:
+          type: integer
+
+    PaymentIntent:
+      type: object
+      required: [clientSecret, amount, currency]
+      properties:
+        clientSecret:
+          type: string
+        amount:
+          type: number
+        currency:
+          type: string
+
+    PaymentConfirmInput:
+      type: object
+      required: [orderId, paymentIntentId]
+      properties:
+        orderId:
+          type: integer
+        paymentIntentId:
+          type: string
+
+    Payment:
+      type: object
+      required: [id, orderId, amount, status, createdAt]
+      properties:
+        id:
+          type: integer
+        orderId:
+          type: integer
+        amount:
+          type: number
+        transactionId:
+          type: ["string", "null"]
+        status:
+          type: string
+          enum: [pending, completed, failed, refunded]
+        createdAt:
+          type: string
+
+    # REVIEWS
+    Review:
+      type: object
+      required: [id, userId, restaurantId, rating, createdAt]
+      properties:
+        id:
+          type: integer
+        userId:
+          type: integer
+        userName:
+          type: string
+        restaurantId:
+          type: integer
+        rating:
+          type: integer
+        comment:
+          type: ["string", "null"]
+        createdAt:
+          type: string
+
+    ReviewInput:
+      type: object
+      required: [restaurantId, rating]
+      properties:
+        restaurantId:
+          type: integer
+        rating:
+          type: integer
+        comment:
+          type: ["string", "null"]
+
+    # NOTIFICATIONS
+    Notification:
+      type: object
+      required: [id, userId, title, message, type, isRead, createdAt]
+      properties:
+        id:
+          type: integer
+        userId:
+          type: integer
+        title:
+          type: string
+        message:
+          type: string
+        type:
+          type: string
+        isRead:
+          type: boolean
+        createdAt:
+          type: string
+
+    NotificationReadInput:
+      type: object
+      required: [id]
+      properties:
+        id:
+          type: integer
+
+    # ANALYTICS
+    AnalyticsSummary:
+      type: object
+      required: [totalRevenue, totalOrders, completedOrders, cancelledOrders, averageOrderValue, paymentSuccessRate, activeRestaurants, totalCustomers]
+      properties:
+        totalRevenue:
+          type: number
+        totalOrders:
+          type: integer
+        completedOrders:
+          type: integer
+        cancelledOrders:
+          type: integer
+        averageOrderValue:
+          type: number
+        paymentSuccessRate:
+          type: number
+        activeRestaurants:
+          type: integer
+        totalCustomers:
+          type: integer
+
+    RevenueDataPoint:
+      type: object
+      required: [date, revenue, orders]
+      properties:
+        date:
+          type: string
+        revenue:
+          type: number
+        orders:
+          type: integer
+
+    TopFoodItem:
+      type: object
+      required: [id, name, restaurantName, totalOrdered, revenue]
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        restaurantName:
+          type: string
+        totalOrdered:
+          type: integer
+        revenue:
+          type: number
+        image:
+          type: ["string", "null"]
+
+    TopRestaurant:
+      type: object
+      required: [id, name, totalOrders, revenue, avgRating]
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        totalOrders:
+          type: integer
+        revenue:
+          type: number
+        avgRating:
+          type: ["number", "null"]
+        image:
+          type: ["string", "null"]
+
+    OrderChartPoint:
+      type: object
+      required: [date, orders, revenue]
+      properties:
+        date:
+          type: string
+        orders:
+          type: integer
+        revenue:
+          type: number
+
+    # DELIVERY
+    DeliveryEarnings:
+      type: object
+      required: [totalDeliveries, totalEarnings, todayEarnings, weekEarnings]
+      properties:
+        totalDeliveries:
+          type: integer
+        totalEarnings:
+          type: number
+        todayEarnings:
+          type: number
+        weekEarnings:
+          type: number
+
+    # ADMIN
+    UserPage:
+      type: object
+      required: [data, total, page, limit]
+      properties:
+        data:
+          type: array
+          items:
+            $ref: "#/components/schemas/User"
+        total:
+          type: integer
+        page:
+          type: integer
+        limit:
+          type: integer
+
+    AdminUserUpdate:
+      type: object
+      properties:
+        name:
+          type: string
+        phone:
+          type: string
+        role:
+          type: string
+          enum: [customer, restaurant_owner, delivery_partner, admin]
+        active:
+          type: boolean
