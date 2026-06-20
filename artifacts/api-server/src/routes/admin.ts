@@ -1,7 +1,7 @@
 import { Router } from "express";
 import { db } from "@workspace/db";
-import { usersTable, restaurantsTable } from "@workspace/db";
-import { eq } from "drizzle-orm";
+import { usersTable, restaurantsTable, reviewsTable } from "@workspace/db";
+import { eq, avg, count } from "drizzle-orm";
 import { authenticate, requireRole } from "../middlewares/auth";
 
 const router = Router();
@@ -33,7 +33,17 @@ router.get("/admin/restaurants", authenticate, requireRole("admin"), async (req,
   const page = parseInt(req.query.page as string) || 1;
   const limit = 20;
   const all = await db.select().from(restaurantsTable);
-  const data = all.slice((page - 1) * limit, page * limit).map(r => ({ ...r, avgRating: null, totalReviews: 0 }));
+  const ratings = await db.select({
+    restaurantId: reviewsTable.restaurantId,
+    avgRating: avg(reviewsTable.rating),
+    totalReviews: count(reviewsTable.id),
+  }).from(reviewsTable).groupBy(reviewsTable.restaurantId);
+  const ratingMap = Object.fromEntries(ratings.map(r => [r.restaurantId, r]));
+  const data = all.slice((page - 1) * limit, page * limit).map(r => ({
+    ...r,
+    avgRating: ratingMap[r.id] ? parseFloat(ratingMap[r.id].avgRating || "0") : null,
+    totalReviews: ratingMap[r.id]?.totalReviews || 0,
+  }));
   res.json({ data, total: all.length, page, limit });
 });
 

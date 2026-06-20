@@ -1,7 +1,7 @@
 import { Link, useLocation } from "wouter";
 import { useAuth } from "@/hooks/use-auth";
-import { useListNotifications } from "@workspace/api-client-react";
-import { ShoppingCart, Bell, User, LogOut, ChefHat, Bike, LayoutDashboard, UtensilsCrossed, ClipboardList, BarChart3, Users, Store } from "lucide-react";
+import { useListNotifications, useGetCart } from "@workspace/api-client-react";
+import { ShoppingCart, Bell, User, LogOut, ChefHat, LayoutDashboard, UtensilsCrossed, ClipboardList, BarChart3, Users, Store } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -35,7 +35,9 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
   const { user, logout } = useAuth();
   const [location] = useLocation();
   const { data: notifications } = useListNotifications({ query: { enabled: !!user } });
+  const { data: cart } = useGetCart({ query: { enabled: !!user && user.role === "customer" } });
   const unreadCount = notifications?.filter(n => !n.isRead).length || 0;
+  const cartCount = cart?.items?.reduce((sum, i) => sum + i.quantity, 0) || 0;
 
   if (!user) {
     return (
@@ -81,6 +83,11 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
             )}>
               <ShoppingCart size={18} />
               Cart
+              {cartCount > 0 && (
+                <Badge className="ml-auto h-5 min-w-5 px-1 text-xs bg-primary text-primary-foreground">
+                  {cartCount > 9 ? "9+" : cartCount}
+                </Badge>
+              )}
             </Link>
           )}
           <Link href="/notifications" className={cn(

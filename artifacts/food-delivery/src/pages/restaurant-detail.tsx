@@ -1,15 +1,46 @@
+import { useState } from "react";
 import { useRoute } from "wouter";
 import { AppLayout } from "@/components/layout";
-import { useGetRestaurant, useListReviews, useAddToCart, useGetCart, getGetCartQueryKey, getGetRestaurantQueryKey } from "@workspace/api-client-react";
+import {
+  useGetRestaurant, useListReviews, useAddToCart, useCreateReview,
+  getGetCartQueryKey, getGetRestaurantQueryKey, getListReviewsQueryKey
+} from "@workspace/api-client-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
+import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/use-auth";
 import { Star, MapPin, Plus, ShoppingCart } from "lucide-react";
 import { motion } from "framer-motion";
 import { useQueryClient } from "@tanstack/react-query";
 import { Link } from "wouter";
+import { cn } from "@/lib/utils";
+
+function StarRating({ value, onChange }: { value: number; onChange: (v: number) => void }) {
+  const [hovered, setHovered] = useState(0);
+  return (
+    <div className="flex gap-1">
+      {[1, 2, 3, 4, 5].map(n => (
+        <button
+          key={n}
+          type="button"
+          onClick={() => onChange(n)}
+          onMouseEnter={() => setHovered(n)}
+          onMouseLeave={() => setHovered(0)}
+          className="focus:outline-none"
+        >
+          <Star
+            size={24}
+            className={cn(
+              "transition-colors",
+              n <= (hovered || value) ? "fill-primary text-primary" : "text-border fill-border"
+            )}
+          />
+        </button>
+      ))}
+    </div>
+  );
+}
 
 export default function RestaurantDetail() {
   const [, params] = useRoute("/restaurants/:id");
@@ -18,24 +49,44 @@ export default function RestaurantDetail() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
+  const [rating, setRating] = useState(5);
+  const [comment, setComment] = useState("");
+  const [showReviewForm, setShowReviewForm] = useState(false);
+
   const { data: restaurant, isLoading } = useGetRestaurant(id, {
     query: { enabled: !!id, queryKey: getGetRestaurantQueryKey(id) }
   });
-  const { data: reviews } = useListReviews({ restaurantId: id });
+  const { data: reviews, refetch: refetchReviews } = useListReviews({ restaurantId: id });
   const addToCart = useAddToCart();
+  const createReview = useCreateReview();
 
   const handleAddToCart = (menuItemId: number, name: string) => {
     if (!user) { toast({ title: "Please sign in to add items to cart", variant: "destructive" }); return; }
     addToCart.mutate({ data: { menuItemId, quantity: 1 } }, {
       onSuccess: () => {
         queryClient.invalidateQueries({ queryKey: getGetCartQueryKey() });
-        toast({ title: `${name} added to cart` });
+        toast({ title: `${name} added to cart ✓` });
       },
       onError: () => toast({ title: "Could not add item", variant: "destructive" }),
     });
   };
 
-  // Group menu items by category
+  const handleSubmitReview = () => {
+    if (!rating) { toast({ title: "Please select a rating", variant: "destructive" }); return; }
+    createReview.mutate({ data: { restaurantId: id, rating, comment: comment.trim() || undefined } }, {
+      onSuccess: () => {
+        toast({ title: "Review submitted! Thank you." });
+        setComment("");
+        setRating(5);
+        setShowReviewForm(false);
+        queryClient.invalidateQueries({ queryKey: getListReviewsQueryKey({ restaurantId: id }) });
+        queryClient.invalidateQueries({ queryKey: getGetRestaurantQueryKey(id) });
+        refetchReviews();
+      },
+      onError: () => toast({ title: "Could not submit review", variant: "destructive" }),
+    });
+  };
+
   const grouped = restaurant?.menuItems?.reduce((acc: Record<string, any[]>, item) => {
     const key = item.categoryName || "Other";
     if (!acc[key]) acc[key] = [];
@@ -84,8 +135,8 @@ export default function RestaurantDetail() {
           </div>
           {user?.role === "customer" && (
             <Link href="/cart" className="absolute top-4 right-4 bg-white/90 backdrop-blur text-foreground px-3 py-1.5 rounded-lg text-sm font-medium flex items-center gap-2 hover:bg-white transition-colors">
-                <ShoppingCart size={15} /> View cart
-              </Link>
+              <ShoppingCart size={15} /> View cart
+            </Link>
           )}
         </div>
 
@@ -133,27 +184,94 @@ export default function RestaurantDetail() {
           ))}
         </div>
 
-        {/* Reviews */}
-        {reviews && reviews.length > 0 && (
-          <section className="mt-10">
-            <h2 className="text-lg font-bold text-foreground mb-4">Reviews</h2>
+        {/* Reviews Section */}
+        <section className="mt-10">
+          <div className="flex items-center justify-between mb-5">
+            <h2 className="text-lg font-bold text-foreground">
+              Reviews {reviews && reviews.length > 0 && <span className="text-muted-foreground font-normal text-sm">({reviews.length})</span>}
+            </h2>
+            {user?.role === "customer" && !showReviewForm && (
+              <Button variant="outline" size="sm" onClick={() => setShowReviewForm(true)}>
+                Write a Review
+              </Button>
+            )}
+          </div>
+
+          {/* Review Form */}
+          {showReviewForm && user?.role === "customer" && (
+            <motion.div
+              initial={{ opacity: 0, y: -10 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="bg-card border border-card-border rounded-2xl p-5 mb-5"
+            >
+              <h3 className="font-semibold text-foreground mb-4">Your Review</h3>
+              <div className="mb-4">
+                <p className="text-sm text-muted-foreground mb-2">Rating</p>
+                <StarRating value={rating} onChange={setRating} />
+              </div>
+              <div className="mb-4">
+                <p className="text-sm text-muted-foreground mb-2">Comment (optional)</p>
+                <Textarea
+                  value={comment}
+                  onChange={e => setComment(e.target.value)}
+                  placeholder="Tell others about your experience..."
+                  rows={3}
+                  className="resize-none"
+                />
+              </div>
+              <div className="flex gap-2">
+                <Button
+                  onClick={handleSubmitReview}
+                  disabled={createReview.isPending}
+                  className="flex-1"
+                >
+                  {createReview.isPending ? "Submitting..." : "Submit Review"}
+                </Button>
+                <Button variant="outline" onClick={() => setShowReviewForm(false)}>Cancel</Button>
+              </div>
+            </motion.div>
+          )}
+
+          {/* Reviews List */}
+          {reviews && reviews.length > 0 ? (
             <div className="space-y-3">
-              {reviews.map(review => (
-                <div key={review.id} className="bg-card border border-card-border rounded-xl p-4" data-testid={`card-review-${review.id}`}>
-                  <div className="flex items-center gap-2 mb-1">
-                    <span className="font-medium text-sm">{review.userName}</span>
-                    <div className="flex">
-                      {Array.from({ length: review.rating }).map((_, i) => (
-                        <Star key={i} size={13} className="fill-primary text-primary" />
-                      ))}
+              {reviews.map((review, i) => (
+                <motion.div
+                  key={review.id}
+                  initial={{ opacity: 0, y: 8 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: i * 0.04 }}
+                  className="bg-card border border-card-border rounded-xl p-4"
+                  data-testid={`card-review-${review.id}`}
+                >
+                  <div className="flex items-center gap-3 mb-2">
+                    <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center text-primary font-bold text-sm shrink-0">
+                      {review.userName?.[0]?.toUpperCase() || "?"}
+                    </div>
+                    <div>
+                      <p className="font-medium text-sm text-foreground">{review.userName}</p>
+                      <div className="flex gap-0.5 mt-0.5">
+                        {Array.from({ length: 5 }).map((_, idx) => (
+                          <Star
+                            key={idx}
+                            size={12}
+                            className={idx < review.rating ? "fill-primary text-primary" : "fill-border text-border"}
+                          />
+                        ))}
+                      </div>
                     </div>
                   </div>
                   {review.comment && <p className="text-sm text-muted-foreground">{review.comment}</p>}
-                </div>
+                </motion.div>
               ))}
             </div>
-          </section>
-        )}
+          ) : (
+            <div className="text-center py-10 text-muted-foreground bg-card border border-card-border rounded-2xl">
+              <Star size={32} className="mx-auto mb-2 text-border" />
+              <p className="text-sm">No reviews yet. Be the first!</p>
+            </div>
+          )}
+        </section>
       </div>
     </AppLayout>
   );
