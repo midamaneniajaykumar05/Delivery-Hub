@@ -3,6 +3,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { AuthProvider } from "@/hooks/use-auth";
+import { useRealtimeNotifications } from "@/hooks/use-websocket";
 import NotFound from "@/pages/not-found";
 import Home from "@/pages/home";
 import Login from "@/pages/login";
@@ -15,6 +16,7 @@ import Orders from "@/pages/orders";
 import OrderDetail from "@/pages/order-detail";
 import Notifications from "@/pages/notifications";
 import Profile from "@/pages/profile";
+import PaymentHistory from "@/pages/payment-history";
 import OwnerDashboard from "@/pages/owner/dashboard";
 import OwnerMenu from "@/pages/owner/menu";
 import OwnerOrders from "@/pages/owner/orders";
@@ -24,6 +26,9 @@ import AdminDashboard from "@/pages/admin/dashboard";
 import AdminUsers from "@/pages/admin/users";
 import AdminRestaurants from "@/pages/admin/restaurants";
 import AdminAnalytics from "@/pages/admin/analytics";
+import AdminPayments from "@/pages/admin/payments";
+import AdminReviews from "@/pages/admin/reviews";
+import AdminDeliveryPartners from "@/pages/admin/delivery-partners";
 
 const queryClient = new QueryClient({
   defaultOptions: { queries: { retry: 1, staleTime: 30000 } }
@@ -43,6 +48,7 @@ function Router() {
       <Route path="/orders/:id" component={OrderDetail} />
       <Route path="/notifications" component={Notifications} />
       <Route path="/profile" component={Profile} />
+      <Route path="/payment-history" component={PaymentHistory} />
       <Route path="/owner/dashboard" component={OwnerDashboard} />
       <Route path="/owner/menu" component={OwnerMenu} />
       <Route path="/owner/orders" component={OwnerOrders} />
@@ -52,9 +58,17 @@ function Router() {
       <Route path="/admin/users" component={AdminUsers} />
       <Route path="/admin/restaurants" component={AdminRestaurants} />
       <Route path="/admin/analytics" component={AdminAnalytics} />
+      <Route path="/admin/payments" component={AdminPayments} />
+      <Route path="/admin/reviews" component={AdminReviews} />
+      <Route path="/admin/delivery-partners" component={AdminDeliveryPartners} />
       <Route component={NotFound} />
     </Switch>
   );
+}
+
+function RealtimeProvider({ children }: { children: React.ReactNode }) {
+  useRealtimeNotifications();
+  return <>{children}</>;
 }
 
 function App() {
@@ -62,10 +76,12 @@ function App() {
     <QueryClientProvider client={queryClient}>
       <TooltipProvider>
         <AuthProvider>
-          <WouterRouter base={import.meta.env.BASE_URL.replace(/\/$/, "")}>
-            <Router />
-          </WouterRouter>
-          <Toaster />
+          <RealtimeProvider>
+            <WouterRouter base={import.meta.env.BASE_URL.replace(/\/$/, "")}>
+              <Router />
+            </WouterRouter>
+            <Toaster />
+          </RealtimeProvider>
         </AuthProvider>
       </TooltipProvider>
     </QueryClientProvider>

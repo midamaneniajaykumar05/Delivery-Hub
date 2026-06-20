@@ -1,0 +1,1 @@
+- [Remaining features status](remaining-features.md) — Razorpay/email/WebSocket need env vars; Docker+Swagger built; all admin pages complete.

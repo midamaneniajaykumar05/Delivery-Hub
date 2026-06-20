@@ -5,6 +5,7 @@ import { db } from "@workspace/db";
 import { usersTable } from "@workspace/db";
 import { eq } from "drizzle-orm";
 import { authenticate, JWT_SECRET, type AuthRequest } from "../middlewares/auth";
+import { sendWelcomeEmail } from "../services/email";
 
 const router = Router();
 
@@ -26,6 +27,7 @@ router.post("/auth/register", async (req, res) => {
     role: role || "customer",
   }).returning();
   const token = jwt.sign({ id: user.id, role: user.role, email: user.email }, JWT_SECRET, { expiresIn: "30d" });
+  sendWelcomeEmail(user.email, user.name).catch(() => {});
   res.status(201).json({
     token,
     user: { id: user.id, name: user.name, email: user.email, phone: user.phone, role: user.role, createdAt: user.createdAt.toISOString() }

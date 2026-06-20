@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { AppLayout } from "@/components/layout";
 import { useGetMyRestaurant, useCreateMenuItem, useUpdateMenuItem, useDeleteMenuItem, useListCategories, useCreateRestaurant, getGetMyRestaurantQueryKey } from "@workspace/api-client-react";
 import { Button } from "@/components/ui/button";
@@ -11,8 +11,80 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { useToast } from "@/hooks/use-toast";
 import { useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/use-auth";
-import { Plus, Pencil, Trash2, UtensilsCrossed } from "lucide-react";
+import { Plus, Pencil, Trash2, UtensilsCrossed, Upload, Image as ImageIcon } from "lucide-react";
 import { motion } from "framer-motion";
+
+function ImageUpload({ value, onChange }: { value: string; onChange: (url: string) => void }) {
+  const fileRef = useRef<HTMLInputElement>(null);
+  const { token } = useAuth();
+  const { toast } = useToast();
+  const [uploading, setUploading] = useState(false);
+  const [preview, setPreview] = useState(value);
+
+  const handleFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setUploading(true);
+    try {
+      const form = new FormData();
+      form.append("image", file);
+      const res = await fetch("/api/upload/image", {
+        method: "POST",
+        headers: { Authorization: `Bearer ${token}` },
+        body: form,
+      });
+      if (!res.ok) throw new Error("Upload failed");
+      const { url } = await res.json();
+      setPreview(url);
+      onChange(url);
+    } catch {
+      toast({ title: "Image upload failed", variant: "destructive" });
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  return (
+    <div className="space-y-2">
+      <Label className="text-sm">Food Image</Label>
+      <div className="flex gap-2">
+        <div
+          className="relative w-24 h-24 rounded-lg border-2 border-dashed border-border flex items-center justify-center cursor-pointer overflow-hidden bg-muted/30 hover:bg-muted/50 transition-colors flex-shrink-0"
+          onClick={() => fileRef.current?.click()}
+        >
+          {preview ? (
+            <img src={preview} alt="preview" className="w-full h-full object-cover" />
+          ) : (
+            <div className="text-center">
+              <ImageIcon size={24} className="mx-auto text-muted-foreground mb-1" />
+              <span className="text-xs text-muted-foreground">Upload</span>
+            </div>
+          )}
+          {uploading && (
+            <div className="absolute inset-0 bg-background/70 flex items-center justify-center">
+              <div className="w-5 h-5 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+            </div>
+          )}
+          <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={handleFile} />
+        </div>
+        <div className="flex-1">
+          <p className="text-xs text-muted-foreground mb-2">Or enter image URL:</p>
+          <Input
+            value={preview}
+            onChange={e => { setPreview(e.target.value); onChange(e.target.value); }}
+            placeholder="https://example.com/image.jpg"
+            className="text-sm"
+          />
+          {preview && (
+            <Button variant="ghost" size="sm" className="mt-1 h-6 text-xs text-muted-foreground px-2" onClick={() => { setPreview(""); onChange(""); }}>
+              Clear image
+            </Button>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
 
 function MenuItemForm({ item, restaurantId, categories, onSuccess }: any) {
   const [name, setName] = useState(item?.name || "");
@@ -23,8 +95,10 @@ function MenuItemForm({ item, restaurantId, categories, onSuccess }: any) {
   const [available, setAvailable] = useState(item?.available ?? true);
   const createItem = useCreateMenuItem();
   const updateItem = useUpdateMenuItem();
+  const { toast } = useToast();
 
   const handleSubmit = () => {
+    if (!name || !price) { toast({ title: "Name and price are required", variant: "destructive" }); return; }
     const data = { restaurantId, name, description: desc || undefined, price: parseFloat(price), image: image || undefined, categoryId: categoryId ? parseInt(categoryId) : undefined, available };
     if (item) {
       updateItem.mutate({ id: item.id, data }, { onSuccess });
@@ -35,10 +109,10 @@ function MenuItemForm({ item, restaurantId, categories, onSuccess }: any) {
 
   return (
     <div className="space-y-4">
-      <div><Label className="text-sm mb-1.5 block">Name</Label><Input value={name} onChange={e => setName(e.target.value)} data-testid="input-item-name" /></div>
+      <div><Label className="text-sm mb-1.5 block">Name *</Label><Input value={name} onChange={e => setName(e.target.value)} data-testid="input-item-name" /></div>
       <div><Label className="text-sm mb-1.5 block">Description</Label><Input value={desc} onChange={e => setDesc(e.target.value)} data-testid="input-item-description" /></div>
-      <div><Label className="text-sm mb-1.5 block">Price ($)</Label><Input type="number" value={price} onChange={e => setPrice(e.target.value)} step="0.01" data-testid="input-item-price" /></div>
-      <div><Label className="text-sm mb-1.5 block">Image URL</Label><Input value={image} onChange={e => setImage(e.target.value)} data-testid="input-item-image" /></div>
+      <div><Label className="text-sm mb-1.5 block">Price ($) *</Label><Input type="number" value={price} onChange={e => setPrice(e.target.value)} step="0.01" data-testid="input-item-price" /></div>
+      <ImageUpload value={image} onChange={setImage} />
       <div>
         <Label className="text-sm mb-1.5 block">Category</Label>
         <Select value={categoryId} onValueChange={setCategoryId}>
@@ -140,7 +214,7 @@ export default function OwnerMenu() {
             <DialogTrigger asChild>
               <Button data-testid="button-add-menu-item"><Plus size={17} className="mr-1" /> Add Item</Button>
             </DialogTrigger>
-            <DialogContent>
+            <DialogContent className="max-h-[90vh] overflow-y-auto">
               <DialogHeader>
                 <DialogTitle>{editItem ? "Edit Item" : "Add Menu Item"}</DialogTitle>
               </DialogHeader>
@@ -170,7 +244,13 @@ export default function OwnerMenu() {
                       className="flex items-center gap-4 bg-card border border-card-border rounded-xl p-4"
                       data-testid={`card-menu-item-${item.id}`}
                     >
-                      {item.image && <img src={item.image} alt={item.name} className="w-14 h-14 rounded-lg object-cover shrink-0" />}
+                      {item.image ? (
+                        <img src={item.image} alt={item.name} className="w-16 h-16 rounded-lg object-cover shrink-0" />
+                      ) : (
+                        <div className="w-16 h-16 rounded-lg bg-muted flex items-center justify-center shrink-0">
+                          <ImageIcon size={20} className="text-muted-foreground" />
+                        </div>
+                      )}
                       <div className="flex-1 min-w-0">
                         <p className="font-medium text-foreground">{item.name}</p>
                         <p className="text-sm text-muted-foreground line-clamp-1">{item.description}</p>

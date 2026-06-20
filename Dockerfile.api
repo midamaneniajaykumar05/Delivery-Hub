@@ -1,0 +1,41 @@
+FROM node:24-alpine AS builder
+WORKDIR /app
+
+RUN npm install -g pnpm
+
+COPY package.json pnpm-workspace.yaml pnpm-lock.yaml ./
+COPY lib/db/package.json ./lib/db/
+COPY lib/api-spec/package.json ./lib/api-spec/
+COPY lib/api-client-react/package.json ./lib/api-client-react/
+COPY artifacts/api-server/package.json ./artifacts/api-server/
+
+RUN pnpm install --frozen-lockfile
+
+COPY lib/ ./lib/
+COPY artifacts/api-server/ ./artifacts/api-server/
+COPY tsconfig.base.json tsconfig.json ./
+
+RUN pnpm run typecheck:libs
+RUN cd artifacts/api-server && node ./build.mjs
+
+FROM node:24-alpine AS runner
+WORKDIR /app
+
+RUN npm install -g pnpm
+
+COPY package.json pnpm-workspace.yaml pnpm-lock.yaml ./
+COPY lib/db/package.json ./lib/db/
+COPY artifacts/api-server/package.json ./artifacts/api-server/
+
+RUN pnpm install --frozen-lockfile --prod
+
+COPY --from=builder /app/artifacts/api-server/dist ./artifacts/api-server/dist
+
+WORKDIR /app/artifacts/api-server
+
+ENV NODE_ENV=production
+ENV PORT=8080
+
+EXPOSE 8080
+
+CMD ["node", "--enable-source-maps", "./dist/index.mjs"]

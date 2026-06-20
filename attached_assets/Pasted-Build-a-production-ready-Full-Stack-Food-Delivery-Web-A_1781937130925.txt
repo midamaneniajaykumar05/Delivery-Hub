@@ -1,0 +1,386 @@
+Build a production-ready Full-Stack Food Delivery Web Application using Python Django, Django REST Framework, MySQL, HTML, CSS, JavaScript, Redis, Docker, Django Channels (WebSockets), and Razorpay Payment Gateway.
+
+Project Name:
+Food Delivery Management System with Online Payments, Real-Time Notifications, REST APIs, and Sales Analytics
+
+Core Requirements:
+Create a responsive, modern, secure, and scalable food delivery platform supporting Customers, Restaurant Owners, Delivery Partners, and Administrators.
+
+Technology Stack:
+
+* Backend: Python Django
+* REST APIs: Django REST Framework
+* Database: MySQL
+* Frontend: HTML, CSS, JavaScript
+* Authentication: JWT Authentication and Session Authentication
+* Real-Time Communication: Django Channels + WebSockets
+* Payment Gateway: Razorpay (Test Mode)
+* Caching: Redis
+* Containerization: Docker
+* API Documentation: Swagger/OpenAPI
+
+User Roles:
+
+1. Customer
+
+* Register and Login
+* Secure Authentication
+* Browse Restaurants
+* Search Restaurants
+* Search Food Items
+* Filter by Category
+* View Restaurant Details
+* View Food Menu
+* Add to Cart
+* Update Cart
+* Remove Items from Cart
+* Checkout
+* Online Payment via Razorpay
+* View Order History
+* Track Orders in Real Time
+* Receive Notifications
+* Submit Ratings and Reviews
+* Manage Profile
+
+2. Restaurant Owner
+
+* Register Restaurant
+* Manage Restaurant Profile
+* Add Food Categories
+* Add Food Items
+* Edit Food Items
+* Delete Food Items
+* Upload Food Images
+* Manage Orders
+* Accept Orders
+* Reject Orders
+* Update Order Status
+* View Revenue Reports
+* View Sales Analytics
+
+3. Delivery Partner
+
+* Login Dashboard
+* View Assigned Orders
+* Accept Delivery Requests
+* Update Delivery Status
+* Mark Orders Delivered
+* View Earnings Summary
+
+4. Admin
+
+* Manage Users
+* Manage Restaurants
+* Manage Delivery Partners
+* Manage Orders
+* Manage Payments
+* Manage Reviews
+* View Complete Analytics Dashboard
+* Platform Monitoring
+* Generate Reports
+
+Order Workflow:
+Pending
+→ Payment Completed
+→ Restaurant Accepted
+→ Preparing
+→ Ready for Pickup
+→ Out for Delivery
+→ Delivered
+
+Database Design:
+
+Users
+
+* user_id
+* name
+* email
+* password
+* phone
+* role
+* created_at
+
+Restaurants
+
+* restaurant_id
+* owner_id
+* restaurant_name
+* address
+* phone
+* image
+* status
+
+Categories
+
+* category_id
+* category_name
+
+MenuItems
+
+* item_id
+* restaurant_id
+* category_id
+* item_name
+* description
+* price
+* image
+* availability
+
+Cart
+
+* cart_id
+* user_id
+
+CartItems
+
+* cart_item_id
+* cart_id
+* item_id
+* quantity
+
+Orders
+
+* order_id
+* user_id
+* restaurant_id
+* total_amount
+* order_status
+* created_at
+
+OrderItems
+
+* order_item_id
+* order_id
+* item_id
+* quantity
+* price
+
+Payments
+
+* payment_id
+* order_id
+* amount
+* transaction_id
+* payment_status
+* payment_date
+
+Reviews
+
+* review_id
+* user_id
+* restaurant_id
+* rating
+* comment
+
+DeliveryPartners
+
+* delivery_partner_id
+* user_id
+* vehicle_number
+
+Notifications
+
+* notification_id
+* user_id
+* title
+* message
+* notification_type
+* is_read
+* created_at
+
+Payment Gateway:
+Integrate Razorpay Test Mode
+
+Features:
+
+* Create Razorpay Order
+* Verify Payment Signature
+* Payment Success Page
+* Payment Failure Page
+* Store Transaction Details
+* Payment History
+* Refund Architecture Ready
+
+Email Notification System:
+Send Email For:
+
+* User Registration
+* Welcome Email
+* Order Placement
+* Payment Success
+* Payment Failure
+* Order Acceptance
+* Order Status Updates
+* Delivery Confirmation
+* Password Reset
+
+Use:
+
+* SMTP Configuration
+* Gmail SMTP Support
+* HTML Email Templates
+* Environment Variables for Credentials
+
+Real-Time Notification System:
+Use Django Channels and WebSockets
+
+Features:
+
+* Live Order Tracking
+* Real-Time Status Updates
+* Notification Center
+* Unread Notification Count
+* Notification History
+* Mark as Read
+* Toast Notifications
+
+REST API Development:
+
+Authentication APIs
+
+* POST /api/register
+* POST /api/login
+* POST /api/logout
+
+Restaurant APIs
+
+* GET /api/restaurants
+* POST /api/restaurants
+* PUT /api/restaurants/{id}
+* DELETE /api/restaurants/{id}
+
+Menu APIs
+
+* GET /api/menu
+* POST /api/menu
+* PUT /api/menu/{id}
+* DELETE /api/menu/{id}
+
+Cart APIs
+
+* GET /api/cart
+* POST /api/cart/add
+* DELETE /api/cart/remove
+
+Order APIs
+
+* POST /api/orders
+* GET /api/orders
+* GET /api/orders/{id}
+
+Payment APIs
+
+* POST /api/payment/create
+* POST /api/payment/verify
+
+Review APIs
+
+* POST /api/reviews
+* GET /api/reviews
+
+Notification APIs
+
+* GET /api/notifications
+* PUT /api/notifications/read
+* PUT /api/notifications/read-all
+
+Analytics APIs
+
+* GET /api/analytics/revenue
+* GET /api/analytics/orders
+* GET /api/analytics/top-foods
+* GET /api/analytics/restaurants
+
+Sales Analytics Dashboard:
+
+Display:
+
+* Total Revenue
+* Daily Revenue
+* Weekly Revenue
+* Monthly Revenue
+* Total Orders
+* Completed Orders
+* Cancelled Orders
+* Average Order Value
+* Top Selling Foods
+* Top Restaurants
+* Most Active Customers
+* Payment Success Rate
+* Customer Retention Metrics
+
+Charts:
+
+* Revenue Trend Line Chart
+* Orders Per Day Bar Chart
+* Top Selling Foods Chart
+* Restaurant Performance Chart
+* Payment Statistics Chart
+
+Frontend Requirements:
+
+* Modern UI
+* Responsive Design
+* Mobile Friendly
+* Dashboard for Each Role
+* Professional Landing Page
+* Restaurant Cards
+* Food Cards
+* Shopping Cart Page
+* Checkout Page
+* Analytics Dashboard
+* Notification Center
+* Profile Management Pages
+
+Security Requirements:
+
+* Password Hashing
+* JWT Authentication
+* CSRF Protection
+* Input Validation
+* SQL Injection Protection
+* Role-Based Access Control
+* Secure Environment Variables
+
+Performance Requirements:
+
+* Redis Caching
+* Optimized SQL Queries
+* Pagination
+* Search and Filtering
+* Lazy Loading Where Appropriate
+
+Deployment Requirements:
+
+* Docker Configuration
+* Docker Compose
+* Environment Variables
+* Production Settings
+* Deployment Documentation
+
+Testing:
+
+* Unit Tests
+* API Tests
+* Integration Tests
+
+Generate:
+
+* Complete Django Project Structure
+* Models
+* Views
+* Templates
+* REST APIs
+* MySQL Schema
+* Authentication System
+* Razorpay Integration
+* WebSocket Integration
+* Email Notification System
+* Analytics Dashboard
+* Sample Data
+* Docker Files
+* Swagger Documentation
+* Deployment Guide
+* Clean and Well-Commented Code
+
+The application should be portfolio-ready, resume-worthy, scalable, secure, and demonstrate advanced full-stack development skills expected from a software engineer.

@@ -11,6 +11,9 @@ import notificationsRouter from "./notifications";
 import analyticsRouter from "./analytics";
 import deliveryRouter from "./delivery";
 import adminRouter from "./admin";
+import adminExtendedRouter from "./admin-extended";
+import razorpayRouter from "./razorpay";
+import uploadRouter from "./upload";
 
 const router: IRouter = Router();
 
@@ -26,5 +29,8 @@ router.use(notificationsRouter);
 router.use(analyticsRouter);
 router.use(deliveryRouter);
 router.use(adminRouter);
+router.use(adminExtendedRouter);
+router.use(razorpayRouter);
+router.use(uploadRouter);
 
 export default router;

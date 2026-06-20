@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { AppLayout } from "@/components/layout";
 import { useGetCart, useCreateOrder, useCreatePaymentIntent, useConfirmPayment, getGetCartQueryKey, getListOrdersQueryKey } from "@workspace/api-client-react";
 import { Button } from "@/components/ui/button";
@@ -8,41 +8,123 @@ import { useToast } from "@/hooks/use-toast";
 import { useQueryClient } from "@tanstack/react-query";
 import { useLocation } from "wouter";
 import { useAuth } from "@/hooks/use-auth";
-import { ShieldCheck, CreditCard, Lock } from "lucide-react";
+import { ShieldCheck, CreditCard, Lock, Zap } from "lucide-react";
 import { motion } from "framer-motion";
 
+declare global {
+  interface Window {
+    Razorpay?: new (options: RazorpayOptions) => { open(): void };
+  }
+}
+
+interface RazorpayOptions {
+  key: string;
+  amount: number;
+  currency: string;
+  name: string;
+  description: string;
+  order_id: string;
+  handler: (response: { razorpay_payment_id: string; razorpay_order_id: string; razorpay_signature: string }) => void;
+  prefill?: { name?: string; email?: string };
+  theme?: { color?: string };
+  modal?: { ondismiss?: () => void };
+}
+
+function loadRazorpayScript(): Promise<boolean> {
+  return new Promise(resolve => {
+    if (window.Razorpay) { resolve(true); return; }
+    const script = document.createElement("script");
+    script.src = "https://checkout.razorpay.com/v1/checkout.js";
+    script.onload = () => resolve(true);
+    script.onerror = () => resolve(false);
+    document.body.appendChild(script);
+  });
+}
+
 export default function Checkout() {
-  const { user } = useAuth();
+  const { user, token } = useAuth();
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [, setLocation] = useLocation();
   const [step, setStep] = useState<"order" | "payment" | "done">("order");
   const [orderId, setOrderId] = useState<number | null>(null);
+  const [address, setAddress] = useState("");
+  const [razorpayConfigured, setRazorpayConfigured] = useState<boolean | null>(null);
   const [cardNumber, setCardNumber] = useState("4242 4242 4242 4242");
   const [expiry, setExpiry] = useState("12/27");
   const [cvv, setCvv] = useState("123");
-  const [address, setAddress] = useState("");
 
   const { data: cart } = useGetCart({ query: { enabled: !!user } });
   const createOrder = useCreateOrder();
   const createPaymentIntent = useCreatePaymentIntent();
   const confirmPayment = useConfirmPayment();
 
+  useEffect(() => {
+    fetch("/api/payments/razorpay/config")
+      .then(r => r.json())
+      .then(d => setRazorpayConfigured(d.configured))
+      .catch(() => setRazorpayConfigured(false));
+  }, []);
+
   const handlePlaceOrder = () => {
     if (!cart?.restaurantId) { toast({ title: "Cart is empty", variant: "destructive" }); return; }
     createOrder.mutate({ data: { restaurantId: cart.restaurantId, deliveryAddress: address || undefined } }, {
-      onSuccess: (order) => {
-        setOrderId(order.id);
-        setStep("payment");
-      },
+      onSuccess: (order) => { setOrderId(order.id); setStep("payment"); },
       onError: () => toast({ title: "Failed to create order", variant: "destructive" }),
     });
   };
 
-  const handlePayment = () => {
+  const handleRazorpayPayment = async () => {
+    if (!orderId) return;
+    const loaded = await loadRazorpayScript();
+    if (!loaded) { toast({ title: "Razorpay failed to load", variant: "destructive" }); return; }
+
+    const res = await fetch("/api/payments/razorpay/create-order", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+      body: JSON.stringify({ orderId }),
+    });
+    if (!res.ok) { toast({ title: "Payment initiation failed", variant: "destructive" }); return; }
+    const { razorpayOrderId, amount, currency, keyId } = await res.json();
+
+    const rzp = new window.Razorpay!({
+      key: keyId,
+      amount,
+      currency,
+      name: "FoodFleet",
+      description: `Order #${orderId}`,
+      order_id: razorpayOrderId,
+      prefill: { name: user?.name, email: user?.email },
+      theme: { color: "#f59e0b" },
+      handler: async (response) => {
+        const verifyRes = await fetch("/api/payments/razorpay/verify", {
+          method: "POST",
+          headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+          body: JSON.stringify({
+            orderId,
+            razorpayOrderId: response.razorpay_order_id,
+            razorpayPaymentId: response.razorpay_payment_id,
+            razorpaySignature: response.razorpay_signature,
+          }),
+        });
+        if (verifyRes.ok) {
+          queryClient.invalidateQueries({ queryKey: getGetCartQueryKey() });
+          queryClient.invalidateQueries({ queryKey: getListOrdersQueryKey() });
+          setStep("done");
+          toast({ title: "Payment successful!" });
+        } else {
+          toast({ title: "Payment verification failed", variant: "destructive" });
+        }
+      },
+      modal: { ondismiss: () => toast({ title: "Payment cancelled" }) },
+    });
+    rzp.open();
+  };
+
+  const handleSimulatedPayment = () => {
     if (!orderId) return;
     createPaymentIntent.mutate({ data: { orderId } }, {
-      onSuccess: (intent) => {
+      onSuccess: () => {
         const fakePaymentIntentId = `pi_${Date.now()}_simulated`;
         confirmPayment.mutate({ data: { orderId, paymentIntentId: fakePaymentIntentId } }, {
           onSuccess: () => {
@@ -127,56 +209,60 @@ export default function Checkout() {
             )}
           </div>
 
-          {/* Payment Form */}
+          {/* Payment */}
           {step === "payment" && (
-            <motion.div
-              initial={{ opacity: 0, x: 20 }}
-              animate={{ opacity: 1, x: 0 }}
-              className="bg-card border border-card-border rounded-2xl p-5"
-            >
+            <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} className="bg-card border border-card-border rounded-2xl p-5">
               <div className="flex items-center gap-2 mb-5">
                 <CreditCard size={20} className="text-primary" />
-                <h2 className="font-semibold text-foreground">Payment Details</h2>
+                <h2 className="font-semibold text-foreground">Payment</h2>
                 <Lock size={14} className="text-muted-foreground ml-auto" />
               </div>
 
-              <div className="space-y-4">
-                <div>
-                  <Label className="text-sm mb-1.5 block">Card Number</Label>
-                  <Input
-                    value={cardNumber}
-                    onChange={e => setCardNumber(e.target.value)}
-                    placeholder="4242 4242 4242 4242"
-                    className="font-mono"
-                    data-testid="input-card-number"
-                  />
-                </div>
-                <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <Label className="text-sm mb-1.5 block">Expiry</Label>
-                    <Input value={expiry} onChange={e => setExpiry(e.target.value)} placeholder="MM/YY" data-testid="input-card-expiry" />
+              {razorpayConfigured ? (
+                <div className="space-y-4">
+                  <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 flex items-center gap-3">
+                    <Zap size={18} className="text-amber-600 flex-shrink-0" />
+                    <div>
+                      <p className="text-sm font-semibold text-amber-800">Razorpay Gateway</p>
+                      <p className="text-xs text-amber-700">Secure payment via Razorpay — UPI, cards, netbanking</p>
+                    </div>
                   </div>
-                  <div>
-                    <Label className="text-sm mb-1.5 block">CVV</Label>
-                    <Input value={cvv} onChange={e => setCvv(e.target.value)} placeholder="123" data-testid="input-card-cvv" />
-                  </div>
+                  <Button
+                    className="w-full h-12 bg-amber-500 hover:bg-amber-600 text-white font-bold"
+                    onClick={handleRazorpayPayment}
+                  >
+                    Pay ₹{((cart.total + 2.99) * 83).toFixed(0)} via Razorpay
+                  </Button>
                 </div>
-              </div>
-
-              <div className="mt-2 text-xs text-muted-foreground bg-muted rounded-lg px-3 py-2 mb-4">
-                Test mode: use any values above to simulate payment
-              </div>
-
-              <Button
-                className="w-full h-12"
-                onClick={handlePayment}
-                disabled={createPaymentIntent.isPending || confirmPayment.isPending}
-                data-testid="button-confirm-payment"
-              >
-                {createPaymentIntent.isPending || confirmPayment.isPending
-                  ? "Processing..."
-                  : `Pay $${(cart.total + 2.99).toFixed(2)}`}
-              </Button>
+              ) : (
+                <div className="space-y-4">
+                  <div>
+                    <Label className="text-sm mb-1.5 block">Card Number</Label>
+                    <Input value={cardNumber} onChange={e => setCardNumber(e.target.value)} placeholder="4242 4242 4242 4242" className="font-mono" data-testid="input-card-number" />
+                  </div>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <Label className="text-sm mb-1.5 block">Expiry</Label>
+                      <Input value={expiry} onChange={e => setExpiry(e.target.value)} placeholder="MM/YY" data-testid="input-card-expiry" />
+                    </div>
+                    <div>
+                      <Label className="text-sm mb-1.5 block">CVV</Label>
+                      <Input value={cvv} onChange={e => setCvv(e.target.value)} placeholder="123" data-testid="input-card-cvv" />
+                    </div>
+                  </div>
+                  <div className="mt-2 text-xs text-muted-foreground bg-muted rounded-lg px-3 py-2 mb-4">
+                    Test mode: any values simulate payment
+                  </div>
+                  <Button
+                    className="w-full h-12"
+                    onClick={handleSimulatedPayment}
+                    disabled={createPaymentIntent.isPending || confirmPayment.isPending}
+                    data-testid="button-confirm-payment"
+                  >
+                    {createPaymentIntent.isPending || confirmPayment.isPending ? "Processing..." : `Pay $${(cart.total + 2.99).toFixed(2)}`}
+                  </Button>
+                </div>
+              )}
             </motion.div>
           )}
         </div>

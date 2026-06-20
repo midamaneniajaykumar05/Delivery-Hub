@@ -3,6 +3,8 @@ import { db } from "@workspace/db";
 import { ordersTable, orderItemsTable, cartItemsTable, cartsTable, menuItemsTable, restaurantsTable, usersTable, notificationsTable, deliveryPartnersTable } from "@workspace/db";
 import { eq, and, desc, inArray } from "drizzle-orm";
 import { authenticate, requireRole, type AuthRequest } from "../middlewares/auth";
+import { sendOrderPlacedEmail, sendOrderStatusEmail } from "../services/email";
+import { broadcastOrderUpdate, sendNotificationToUser } from "../services/websocket";
 
 const router = Router();
 
@@ -55,6 +57,13 @@ router.post("/orders", authenticate, requireRole("customer"), async (req: AuthRe
   await db.update(cartsTable).set({ restaurantId: null }).where(eq(cartsTable.id, cart.id));
 
   await createNotification(req.user!.id, "Order Placed", `Your order #${order.id} has been placed successfully.`, "order");
+  sendNotificationToUser(req.user!.id, { type: "order", title: "Order Placed", orderId: order.id });
+
+  const [restaurant] = await db.select().from(restaurantsTable).where(eq(restaurantsTable.id, restaurantId || cart.restaurantId!));
+  const [userRec] = await db.select().from(usersTable).where(eq(usersTable.id, req.user!.id));
+  if (userRec) {
+    sendOrderPlacedEmail(userRec.email, userRec.name, order.id, total, restaurant?.name || "the restaurant").catch(() => {});
+  }
 
   res.status(201).json(await buildOrder(order));
 });
@@ -112,6 +121,9 @@ router.patch("/orders/:id/status", authenticate, async (req: AuthRequest, res) =
   };
   if (statusMessages[status]) {
     await createNotification(order.userId, "Order Update", statusMessages[status], "order_status");
+    broadcastOrderUpdate(order.userId, order.id, status);
+    const [userRec] = await db.select().from(usersTable).where(eq(usersTable.id, order.userId));
+    if (userRec) sendOrderStatusEmail(userRec.email, userRec.name, order.id, status).catch(() => {});
   }
 
   res.json(await buildOrder(order));

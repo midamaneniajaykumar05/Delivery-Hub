@@ -1,7 +1,7 @@
 import { Link, useLocation } from "wouter";
 import { useAuth } from "@/hooks/use-auth";
 import { useListNotifications, useGetCart } from "@workspace/api-client-react";
-import { ShoppingCart, Bell, User, LogOut, ChefHat, LayoutDashboard, UtensilsCrossed, ClipboardList, BarChart3, Users, Store } from "lucide-react";
+import { ShoppingCart, Bell, User, LogOut, ChefHat, LayoutDashboard, UtensilsCrossed, ClipboardList, BarChart3, Users, Store, CreditCard, MessageSquare, Truck } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -22,6 +22,9 @@ function getNavItems(role: string): NavItem[] {
     { href: "/admin/dashboard", label: "Dashboard", icon: <LayoutDashboard size={18} /> },
     { href: "/admin/users", label: "Users", icon: <Users size={18} /> },
     { href: "/admin/restaurants", label: "Restaurants", icon: <Store size={18} /> },
+    { href: "/admin/payments", label: "Payments", icon: <CreditCard size={18} /> },
+    { href: "/admin/reviews", label: "Reviews", icon: <MessageSquare size={18} /> },
+    { href: "/admin/delivery-partners", label: "Delivery Partners", icon: <Truck size={18} /> },
     { href: "/admin/analytics", label: "Analytics", icon: <BarChart3 size={18} /> },
   ];
   return [
@@ -60,7 +63,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
           </div>
           <span className="font-bold text-lg text-sidebar-foreground tracking-tight">FoodFleet</span>
         </div>
-        <nav className="flex-1 px-3 py-4 space-y-1">
+        <nav className="flex-1 px-3 py-4 space-y-1 overflow-y-auto">
           {navItems.map(item => (
             <Link key={item.href} href={item.href} className={cn(
               "flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors",
@@ -75,20 +78,31 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
         </nav>
         <div className="p-3 border-t border-sidebar-border space-y-1">
           {user.role === "customer" && (
-            <Link href="/cart" className={cn(
-              "flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors",
-              location === "/cart"
-                ? "bg-sidebar-primary text-sidebar-primary-foreground"
-                : "text-sidebar-foreground hover:bg-sidebar-accent"
-            )}>
-              <ShoppingCart size={18} />
-              Cart
-              {cartCount > 0 && (
-                <Badge className="ml-auto h-5 min-w-5 px-1 text-xs bg-primary text-primary-foreground">
-                  {cartCount > 9 ? "9+" : cartCount}
-                </Badge>
-              )}
-            </Link>
+            <>
+              <Link href="/cart" className={cn(
+                "flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors",
+                location === "/cart"
+                  ? "bg-sidebar-primary text-sidebar-primary-foreground"
+                  : "text-sidebar-foreground hover:bg-sidebar-accent"
+              )}>
+                <ShoppingCart size={18} />
+                Cart
+                {cartCount > 0 && (
+                  <Badge className="ml-auto h-5 min-w-5 px-1 text-xs bg-primary text-primary-foreground">
+                    {cartCount > 9 ? "9+" : cartCount}
+                  </Badge>
+                )}
+              </Link>
+              <Link href="/payment-history" className={cn(
+                "flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors",
+                location === "/payment-history"
+                  ? "bg-sidebar-primary text-sidebar-primary-foreground"
+                  : "text-sidebar-foreground hover:bg-sidebar-accent"
+              )}>
+                <CreditCard size={18} />
+                Payments
+              </Link>
+            </>
           )}
           <Link href="/notifications" className={cn(
             "flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors relative",
